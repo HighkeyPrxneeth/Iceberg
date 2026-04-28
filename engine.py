@@ -4,6 +4,10 @@ import os
 import httpx
 from datetime import datetime, timezone
 import json
+from google import genai
+from dotenv import load_dotenv
+
+load_dotenv()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SERVER_URL = "http://localhost:8000"
@@ -106,13 +110,41 @@ def run_watermark_verifier(suspicious_queue: mp.Queue, stop_event: mp.Event):
         
         if extracted_payload:
             print(f"[Verifier] 🎯 Payload Extracted: {extracted_payload} (Confidence 98.2%)")
+            
+            # Generate Evidence Brief with Gemini
+            evidence_brief = "Generative evidence brief not available."
+            try:
+                genai_client = genai.Client()
+                current_time_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+                
+                system_instruction = "You are a legal and digital forensics expert generating evidence briefs for DMCA violations."
+                prompt_content = f"""Generate a structured, formal evidence brief for a piracy case using simple Markdown formatting. 
+                
+Important details to include:
+* **Detection Time**: {current_time_str}
+* **Infringing Content**: '{post.get('title')}'
+* **Location/URL**: {post.get('video_url')}
+* **Extracted Watermark Payload**: {extracted_payload}
+
+Highlight that the C2PA signature was maliciously stripped, but the invisible digital watermark survived, establishing undeniable proof of unauthorized redistribution.
+Keep it concise and punchy."""
+
+                response = genai_client.models.generate_content(
+                    model="gemini-3-flash-preview",
+                    contents=prompt_content,
+                )
+                evidence_brief = response.text
+            except Exception as e:
+                print(f"[Verifier] Gemini API Error: {e}")
+
             _post_alert({
                 "type": "piracy_detected",
                 "title": "🏴‍☠️ Piracy Detected",
                 "message": f"Illegal redistribution found on {post.get('video_url')}. C2PA stripped, but Algorithmic Block-Based DCT extracted payload {extracted_payload}.",
                 "url": post.get("video_url"),
                 "payload": extracted_payload,
-                "confidence": 0.982
+                "confidence": 0.982,
+                "evidence_brief": evidence_brief
             })
         else:
             print("[Verifier] No payload found.")

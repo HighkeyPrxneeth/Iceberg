@@ -2,6 +2,21 @@
 import { Link } from 'react-router-dom';
 import { Upload, ShieldAlert, Activity, PlaySquare, Crosshair, CheckCircle } from 'lucide-react';
 
+const parseMarkdown = (text) => {
+  if (!text) return { __html: "" };
+  let html = text
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/__(.*?)__/g, '<strong>$1</strong>')
+    .replace(/_(.*?)_/g, '<em>$1</em>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\n- (.*?)(?=\n|$)/g, '<br/>• $1')
+    .replace(/\n\* (.*?)(?=\n|$)/g, '<br/>• $1')
+    .replace(/\n\n/g, '<br/><br/>')
+    .replace(/\n/g, '<br/>');
+  return { __html: html };
+};
+
 export default function Dashboard() {
   const [assets, setAssets] = useState([]);
   const [alerts, setAlerts] = useState([]);
@@ -247,6 +262,19 @@ export default function Dashboard() {
               {alert.confidence && (
                 <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--accent-danger)', fontWeight: 500 }}>
                   Confidence: {Number(alert.confidence * 100).toFixed(1)}%
+                </div>
+              )}
+              {alert.evidence_brief && (
+                <div style={{ 
+                  marginTop: '10px', 
+                  padding: '10px', 
+                  fontSize: '12px', 
+                  backgroundColor: 'rgba(255, 68, 68, 0.1)', 
+                  borderLeft: '2px solid var(--accent-danger)',
+                  color: 'var(--text-primary)'
+                }}>
+                  <strong>Gemini Evidence Brief:</strong><br/>
+                  <div dangerouslySetInnerHTML={parseMarkdown(alert.evidence_brief)} style={{ marginTop: '5px' }} />
                 </div>
               )}
             </div>
