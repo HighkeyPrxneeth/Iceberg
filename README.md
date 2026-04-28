@@ -1,5 +1,5 @@
 > [!NOTE]
-> Parts of this repository were developed with the assistance of GitHub Copilot.
+> Parts of this repository were developed with the assistance of GitHub Copilot & Google Antigravity.
 
 # Project Iceberg 
 
