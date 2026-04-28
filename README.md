@@ -133,6 +133,56 @@ python engine.py --mode crawler
 python engine.py --mode verifier
 ```
 
+## ☁️ Cloud Deployment (GCP)
+
+To host Project Iceberg on Google Cloud Platform for 30 days using your credits, follow these steps:
+
+### 1. Build and Push Images to Artifact Registry
+```bash
+# Set project and create repo
+gcloud config set project [PROJECT_ID]
+gcloud artifacts repositories create iceberg-repo --repository-format=docker --location=us-central1
+
+# Configure docker
+gcloud auth configure-docker us-central1-docker.pkg.dev
+
+# Build, tag and push
+docker build -t us-central1-docker.pkg.dev/[PROJECT_ID]/iceberg-repo/backend:latest .
+docker build -t us-central1-docker.pkg.dev/[PROJECT_ID]/iceberg-repo/frontend:latest ./frontend
+
+docker push us-central1-docker.pkg.dev/[PROJECT_ID]/iceberg-repo/backend:latest
+docker push us-central1-docker.pkg.dev/[PROJECT_ID]/iceberg-repo/frontend:latest
+```
+
+### 2. Deploy Backend & Frontend to Cloud Run
+```bash
+# Deploy Backend
+gcloud run deploy iceberg-api \
+  --image us-central1-docker.pkg.dev/[PROJECT_ID]/iceberg-repo/backend:latest \
+  --platform managed \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --memory 2Gi
+
+# Deploy Frontend (Point VITE_API_URL to the new Backend URL)
+gcloud run deploy iceberg-ui \
+  --image us-central1-docker.pkg.dev/[PROJECT_ID]/iceberg-repo/frontend:latest \
+  --platform managed \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --set-env-vars VITE_API_URL=[URL_FROM_ABOVE_STEP]/api
+```
+
+### 3. Deploy Workers to Compute Engine
+Since Crawler and Verifier require a persistent state and long-running threads:
+1. Create a `e2-standard-2` VM instance.
+2. Install Docker.
+3. Run the workers:
+```bash
+docker run -d --name crawler us-central1-docker.pkg.dev/[PROJECT_ID]/iceberg-repo/backend:latest python engine.py --mode crawler
+docker run -d --name verifier us-central1-docker.pkg.dev/[PROJECT_ID]/iceberg-repo/backend:latest python engine.py --mode verifier
+```
+
 ## 📁 Project Structure
 
 ```

@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    environment:
+      - LOG_LEVEL=INFO
+      - UPLOAD_DIR=/app/uploads
+      - FAISS_INDEX_PATH=/app/data/faiss_index
+    volumes:
+      - iceberg-data:/app/data
+      - iceberg-uploads:/app/uploads
+    restart: always
+
+  crawler:
+    build: .
+    command: python engine.py --mode crawler
+    depends_on:
+      - backend
+    volumes:
+      - iceberg-data:/app/data
+    restart: always
+
+  verifier:
+    build: .
+    command: python engine.py --mode verifier
+    depends_on:
+      - backend
+    volumes:
+      - iceberg-data:/app/data
+      - iceberg-uploads:/app/uploads
+    restart: always
+
+  frontend:
+    build:
+      context: ./frontend
+      # Replace with your actual Azure App Service URL after the first deployment
+      args:
+        - VITE_API_URL=/api
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: always
+
+volumes:
+  iceberg-data:
+  iceberg-uploads:
